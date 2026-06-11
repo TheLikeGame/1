@@ -1,3 +1,3 @@
-cd ml_spam
 pip install -r requirements.txt
+cd ml_spam
 python spam.py
