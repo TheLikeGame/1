@@ -12,6 +12,31 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
+import requests
+
+N8N_WEBHOOK_URL = "https://thelikegame.app.n8n.cloud/webhook-test/spam-moderation"
+UNCERTAINTY_THRESHOLD = 70  # % ниже которого отправляем на модерацию
+
+def classify_and_route(text: str, pipeline):
+    pred = int(pipeline.predict([text])[0])
+    proba = pipeline.predict_proba([text])[0]
+    confidence = float(proba[pred]) * 100
+
+    label = "spam" if pred == 1 else "ham"
+
+    if confidence < UNCERTAINTY_THRESHOLD:
+        # Отправляем на ручную модерацию в n8n
+        try:
+            requests.post(N8N_WEBHOOK_URL, json={
+                "text": text,
+                "predicted": label,
+                "confidence": round(confidence, 1)
+            }, timeout=5)
+            print(f"⏳ Отправлено на модерацию ({confidence:.1f}%): {text}")
+        except requests.exceptions.RequestException as e:
+            print(f"Ошибка отправки в n8n: {e}")
+    else:
+        print(f"{'🚨 СПАМ' if pred == 1 else '✅ Норма'} ({confidence:.1f}%): {text}")
 
 # -------------------------------------------------------
 # 1. Загрузка данных
